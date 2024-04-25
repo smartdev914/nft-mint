@@ -11,8 +11,8 @@ mint_nft = "3B1E88qLCVqEuSzx9ToZwEd9SjDT3ZnD1xv3tr6iSjeS"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
-wallet = "/Users/kiem.tran/.config/solana/id.json"
+cluster = "devnet"
+wallet = "/Users/kiem.tran/payer.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
