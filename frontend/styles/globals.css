@@ -157,6 +157,10 @@
 	animation-duration: 11s;
 }
 
+.wallet-adapter-button-trigger {
+    background-color: #848484;
+}
+
 @keyframes animate {
 	0% {
 		transform: translateY(0) rotate(0deg);

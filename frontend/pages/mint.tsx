@@ -9,28 +9,10 @@ export default function HomePage() {
   const { publicKey } = useWallet()
   const [collections, setCollections] = useState<UploadResult[]>([])
   const [merkleTrees, setMerkleTrees] = useState<CreateMerkleTreeResult[]>([])
-
-  const fetchCollections = async () => {
-    if (publicKey?.toBase58()) {
-      await getCollectionsByOwner(publicKey.toBase58()).then((response) => {
-        setCollections(response)
-      })
-
-      await getMerkleTreeByOwner(publicKey.toBase58()).then((response) => {
-        setMerkleTrees(response)
-      })
-    }
-  }
-  useEffect(() => {
-    fetchCollections()
-  }, [publicKey])
   
   return (
     <>
       <div className="mb-10">
-        <Typography as="h4" level="h6" className="mb-2 font-bold">
-          Mint cNFT
-        </Typography>
       </div>
       <MintNFTForm collections={collections} merkleTrees={merkleTrees} />
     </>

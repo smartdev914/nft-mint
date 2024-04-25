@@ -155,15 +155,15 @@ pub mod mint_nft {
 
 #[derive(Accounts)]
 pub struct MintNft<'info> {
-    /// CHECK: 
+    /// CHECK: Don't need to check it
     #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
-    /// CHECK: 
+    /// CHECK: Don't need to check it
     #[account(mut)]
     pub master_edition: UncheckedAccount<'info>,
     #[account(mut)]
     pub mint: Signer<'info>,
-    /// CHECK: 
+    /// CHECK: Don't need to check it
     #[account(mut)]
     pub token_account: UncheckedAccount<'info>,
     #[account(mut)]
@@ -172,6 +172,6 @@ pub struct MintNft<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, token::Token>,
     pub associated_token_program: Program<'info, associated_token::AssociatedToken>,
-    /// CHECK:
+    /// CHECK:  Don't need to check it
     pub token_metadata_program: UncheckedAccount<'info>,
 }

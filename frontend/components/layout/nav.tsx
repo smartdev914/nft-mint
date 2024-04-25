@@ -6,36 +6,36 @@ import { Routes } from "@/config/routes"
 import { cn } from "@/utils/cn"
 
 export const NavItems = [
-  {
-    text: "Merkle Tree",
-    href: Routes.TREE,
-    icon: <TreePineIcon />,
-  },
-  {
-    text: "Collection",
-    href: Routes.COLLECTION,
-    icon: <BookIcon />,
-  },
-  {
-    text: "Mint cNFT",
-    href: Routes.MINT_NFT,
-    icon: <ImagePlusIcon />,
-  },
-  {
-    text: "Your cNFTs",
-    href: Routes.VIEW_NFTS,
-    icon: <ImageIcon />,
-  },
-  {
-    text: "Transfer cNFT",
-    href: Routes.TRANSFER_NFT,
-    icon: <TruckIcon />,
-  },
-  {
-    text: "Burn cNFT",
-    href: Routes.BURN_NFT,
-    icon: <FlameIcon />,
-  },
+  // {
+  //   text: "Merkle Tree",
+  //   href: Routes.TREE,
+  //   icon: <TreePineIcon />,
+  // },
+  // {
+  //   text: "Collection",
+  //   href: Routes.COLLECTION,
+  //   icon: <BookIcon />,
+  // },
+  // {
+  //   text: "Mint cNFT",
+  //   href: Routes.MINT_NFT,
+  //   icon: <ImagePlusIcon />,
+  // },
+  // {
+  //   text: "Your cNFTs",
+  //   href: Routes.VIEW_NFTS,
+  //   icon: <ImageIcon />,
+  // },
+  // {
+  //   text: "Transfer cNFT",
+  //   href: Routes.TRANSFER_NFT,
+  //   icon: <TruckIcon />,
+  // },
+  // {
+  //   text: "Burn cNFT",
+  //   href: Routes.BURN_NFT,
+  //   icon: <FlameIcon />,
+  // },
 ]
 
 export const Navigation = () => {
@@ -45,11 +45,8 @@ export const Navigation = () => {
     <nav className="hidden w-[280px] shrink-0 lg:block">
       <div className="fixed flex flex-col left-0 top-0 z-0 h-full w-[280px] overflow-y-auto border-r border-dashed border-r-gray-500/24">
         <div className="mb-4 px-5 py-6">
-          <a href="/" className="font-bold">
-            <img src="/assets/logo.png" className="h-16 w-48 rounded-md" />
-          </a>
         </div>
-        <div className="flex h-96 flex-col">
+        {/* <div className="flex h-96 flex-col">
           <ul className="relative px-4">
             {NavItems.map((item) => (
               <NavItem
@@ -61,7 +58,7 @@ export const Navigation = () => {
               />
             ))}
           </ul>
-        </div>
+        </div> */}
         <div className="flex-1 flex flex-col justify-end items-center">
           <div className="flex items-center gap-4 p-6">
           </div>

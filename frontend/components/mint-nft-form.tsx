@@ -1,19 +1,39 @@
+import * as anchor from "@coral-xyz/anchor";
+import { AnchorProvider, setProvider, Wallet } from '@coral-xyz/anchor';
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react"
+import { clusterApiUrl, Connection, PublicKey, sendAndConfirmTransaction, SendTransactionError } from "@solana/web3.js";
+import { Keypair } from '@solana/web3.js';
 import { PlusIcon, TrashIcon } from "lucide-react"
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Networks } from "@/config/enum"
-import { mintNFT } from "@/libs/shyft"
-import { CreateMerkleTreeResult, UploadResult } from "@/types"
+import { MintNft } from'@/idl/mint_nft';
+import idl from '@/idl/mint_nft.json';
 import ConnectWalletButton from "./connect-wallet-button"
 import { NetworkSelect } from "./network-select"
 import { IconButton } from "./ui/icon-button"
 import { useToast } from "./ui/toast"
+
+const PROGRAM_ID_DEV_NET = '3B1E88qLCVqEuSzx9ToZwEd9SjDT3ZnD1xv3tr6iSjeS';
+const mintKeypair: anchor.web3.Keypair = anchor.web3.Keypair.generate();
+
+const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
+  'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
+);
+// const owner = Keypair.fromSecretKey(
+//   Uint8Array.from([
+//     207, 10, 30, 18, 231, 158, 148, 233, 3, 79, 51, 28, 226, 14, 100, 105, 40,
+//     0, 21, 124, 124, 37, 49, 141, 113, 227, 15, 163, 144, 153, 110, 52, 85,
+//     113, 67, 66, 112, 198, 158, 22, 99, 2, 166, 247, 216, 182, 177, 142, 234,
+//     93, 67, 185, 207, 163, 44, 128, 109, 143, 105, 244, 159, 28, 46, 196,
+//   ])
+// );
 
 const formSchema = z.object({
   name: z
@@ -31,10 +51,6 @@ const formSchema = z.object({
     .string({ required_error: "This field is required." })
     .trim()
     .max(256, `The maximum allowed length for this field is 256 characters`),
-  collection: z.string().trim(),
-  collectionMint: z.string().trim(),
-  metadataAccount: z.string({ required_error: "This field is required." }).trim(),
-  masterEditionAccount: z.string({ required_error: "This field is required." }).trim(),
   attributes: z
     .array(
       z.object({
@@ -51,13 +67,30 @@ const formSchema = z.object({
       })
     )
     .optional(),
-  treeKeypair: z.string({ required_error: "This field is required." }).trim(),
   network: z.enum(Networks),
 })
 
-export function MintNFTForm(props: { collections: UploadResult[]; merkleTrees: CreateMerkleTreeResult[] }) {
+export function MintNFTForm() {
   const { toast } = useToast()
-  const { connected, publicKey } = useWallet()
+  const { connected, publicKey, sendTransaction, signTransaction } = useWallet()
+  const [program, setProgram] = useState<anchor.Program>()
+
+  const { connection } = useConnection()
+  const wallet = useAnchorWallet()
+
+  useEffect(() => {
+    let provider: anchor.Provider
+
+    try {
+      provider = anchor.getProvider()
+    } catch {
+      provider = new anchor.AnchorProvider(connection, wallet as Wallet, {})
+      anchor.setProvider(provider)
+    }
+
+    const program = new anchor.Program(idl as anchor.Idl, PROGRAM_ID_DEV_NET)
+    setProgram(program)
+  }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,11 +98,6 @@ export function MintNFTForm(props: { collections: UploadResult[]; merkleTrees: C
       name: "",
       symbol: "",
       uri: "",
-      collection: "",
-      collectionMint: "",
-      metadataAccount: "",
-      masterEditionAccount: "",
-      treeKeypair: "",
       network: "devnet",
     },
   })
@@ -80,49 +108,79 @@ export function MintNFTForm(props: { collections: UploadResult[]; merkleTrees: C
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
+    const title = values.name;
+    const symbol = values.symbol;
+    const uri =values.uri;
     try {
-      if (!publicKey) {
+      if (!publicKey || !program || !signTransaction) {
         toast({
           variant: "warning",
           title: "Please connect to your wallet",
         })
         return
       }
-      const response = await mintNFT({
-        owner: publicKey.toBase58(),
-        treeKeypair: values.treeKeypair,
-        collectionMint: values.collectionMint,
-        network: values.network,
-        masterEditionAccount: values.masterEditionAccount,
-        metadataAccount: values.metadataAccount,
-        name: values.name,
-        symbol: values.symbol,
-        uri: values.uri,
-      })
+      const tokenAddress = await anchor.utils.token.associatedAddress({
+        mint: mintKeypair.publicKey,
+        owner: publicKey,
+      });
 
-      if (response) {
-        toast({
-          variant: "success",
-          title: "Your NFT minted successfully",
-          description: (
-            <a
-              className="underline"
-              target="_blank"
-              rel="noopener noreferrer"
-              href={`https://translator.shyft.to/address/${values.collectionMint}?cluster=${values.network}`}
-            >
-              View transaction
-            </a>
-          ),
+      const metadataAddress = (
+        await anchor.web3.PublicKey.findProgramAddress(
+          [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mintKeypair.publicKey.toBuffer(),
+          ],
+          TOKEN_METADATA_PROGRAM_ID
+        )
+      )[0];
+
+      const masterEditionAddress = (
+        await anchor.web3.PublicKey.findProgramAddress(
+          [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mintKeypair.publicKey.toBuffer(),
+            Buffer.from('edition'),
+          ],
+          TOKEN_METADATA_PROGRAM_ID
+        )
+      )[0];
+
+      const tsx = await program.methods
+        .mint(title, symbol, uri)
+        .accounts({
+          masterEdition: masterEditionAddress,
+          metadata: metadataAddress,
+          mint: mintKeypair.publicKey,
+          tokenAccount: tokenAddress,
+          mintAuthority: publicKey,
+          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
         })
-      } else {
-        toast({
-          variant: "error",
-          title: "Error :(",
-          description: "Unknown error",
-        })
-      }
+        .transaction();
+       const latestBlockhash = await connection.getLatestBlockhash();
+        tsx.feePayer = publicKey;
+        tsx.recentBlockhash = latestBlockhash.blockhash
+        tsx.partialSign(mintKeypair);
+
+      const signature = await sendTransaction(tsx, connection);
+
+      await connection.confirmTransaction(signature, "confirmed")
+
+      toast({
+        variant: "success",
+        title: "NFT created successfully",
+        description: (
+          <a
+            className="underline"
+            target="_blank"
+            rel="noopener noreferrer"
+            href={`https://translator.shyft.to/tx/${signature}?cluster=${values.network}`}
+          >
+            View transaction
+          </a>
+        ),
+      })
     } catch (error) {
       toast({
         variant: "error",
@@ -185,103 +243,6 @@ export function MintNFTForm(props: { collections: UploadResult[]; merkleTrees: C
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="collection"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Choose collection</FormLabel>
-                  <FormControl>
-                    <Select
-                      onValueChange={(value) => {
-                        field.onChange(value)
-                        const collectionSelected = props.collections.find((collection) => `${collection.id}` === value)
-                        if (collectionSelected) {
-                          form.setValue("collectionMint", collectionSelected.collectionMint)
-                          form.setValue("metadataAccount", collectionSelected.metadataAccount)
-                          form.setValue("masterEditionAccount", collectionSelected.masterEditionAccount)
-                        }
-                      }}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select collection" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent
-                        position="popper"
-                        sideOffset={8}
-                        className="!w-[var(--radix-select-trigger-width)]"
-                      >
-                        {props.collections.map((collection) => (
-                          <SelectItem key={collection.id} value={`${collection.id}`}>
-                            {collection.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* collection address */}
-            <FormField
-              control={form.control}
-              name="collectionMint"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Collection address</FormLabel>
-                  <FormControl>
-                    <Input disabled placeholder="Collection address" error={fieldState.invalid} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                  <FormDescription>
-                    On-chain address of the collection represented by an NFT, with max_supply of 0.
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
-
-            {/* Metadata Account */}
-            <FormField
-              control={form.control}
-              name="metadataAccount"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Metadata Account</FormLabel>
-                  <FormControl>
-                    <Input disabled placeholder="Metadata Account" error={fieldState.invalid} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                  <FormDescription>
-                    Metadata Account On-chain address of the collection represented by an NFT, with max_supply of 0.
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
-
-            {/* Master Edition Account */}
-            <FormField
-              control={form.control}
-              name="masterEditionAccount"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel> Master Edition Account</FormLabel>
-                  <FormControl>
-                    <Input disabled placeholder=" Master Edition Account" error={fieldState.invalid} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                  <FormDescription>
-                    Master Edition Account On-chain address of the collection represented by an NFT, with max_supply of
-                    0.
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
-
             {/* attributes */}
             {fields.map((field, index) => (
               <div className="flex w-full items-center gap-6" key={field.id}>
@@ -338,38 +299,6 @@ export function MintNFTForm(props: { collections: UploadResult[]; merkleTrees: C
             >
               Add attributes
             </Button>
-
-            {/* merkle tree */}
-            <FormField
-              control={form.control}
-              name="treeKeypair"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Merkle tree</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Merkle tree address" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent
-                        position="popper"
-                        sideOffset={8}
-                        className="!w-[var(--radix-select-trigger-width)]"
-                      >
-                        {props.merkleTrees.map((merkleTre) => (
-                          <SelectItem key={merkleTre.id} value={`${merkleTre.treeAddress}`}>
-                            {merkleTre.treeAddress}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

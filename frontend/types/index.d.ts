@@ -41,10 +41,6 @@ export type CreateMerkleTreeResult = {
 
 export type MintNFTRequestBody = {
   network: Network
-  treeKeypair: string
-  collectionMint: string
-  metadataAccount: string
-  masterEditionAccount: string
   name: string
   symbol: string
   uri: string
