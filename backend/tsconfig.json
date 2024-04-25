@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2017",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "rootDir": "./",
+    "paths": {
+      "@exceptions/*": ["./src/common/exceptions/*"],
+      "@environments": ["./src/common/environments"],
+      "@constants/*": ["./src/common/constants/*"],
+      "@roles/*": ["./src/common/roles/*"],
+      "@enums/*": ["./src/common/enums/*"],
+      "@decorators/*": ["./src/common/decorators/*"],
+      "@guards/*": ["./src/common/guards/*"],
+      "@common/*": ["./src/common/common/*"],
+      "@/*": ["./src/*"],
+    }
+  }
+}

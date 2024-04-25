@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db: 
+    image: mysql:5.7
+    restart: always
+    environment:
+      - TZ:UTC
+      - 'MYSQL_DATABASE=${DB_NAME}'
+      - 'MYSQL_USER=${DB_USER}'
+      - 'MYSQL_ROOT_PASSWORD=${DB_PASS}'
+      - 'MYSQL_PASSWORD=${DB_PASS}'
+    ports:
+      - '${DB_PORT}:${DB_PORT}'
+    volumes:
+      - db:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+  api:
+    container_name: nestjs-starter-kit-api
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: nestjs-starter-kit-api
+    depends_on:
+      - db
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
+    links:
+      - db
+    volumes:
+      - ./:/src
+volumes:
+  db:
+    driver: local
