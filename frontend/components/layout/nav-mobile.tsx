@@ -18,17 +18,6 @@ export const NavigationMobile = ({ trigger }: { trigger: React.ReactNode }) => {
           </a>
         </SheetHeader>
         <div className="gap-4 py-4">
-          <ul>
-            {NavItems.map((item) => (
-              <NavItem
-                key={item.text}
-                text={item.text}
-                href={item.href}
-                selected={asPath === item.href}
-                icon={item.icon}
-              />
-            ))}
-          </ul>
         </div>
         <SheetFooter>
           <div className="flex-1 flex flex-col justify-end items-center">
